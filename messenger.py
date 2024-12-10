@@ -1,37 +1,4 @@
-from datetime import datetime
-server = {
-    'users': [
-        {'id': 1, 'name': 'Alice'},
-        {'id': 2, 'name': 'Bob'}
-    ],
-    'channels': [
-        {'id': 1, 'name': 'Town square', 'member_ids': [1, 2]}
-    ],
-    'messages': [
-        {
-            'id': 1,
-            'reception_date': "2019-14-04",
-            'sender_id': 1,
-            'channel': 1,
-            'content': 'Hi '
-        }
-    ]
-}
-
-
 import json
-def ouverture_fichier():
-    with open('server.json') as f:
-        server=json.load(f)
-        return server
-
-ouverture_fichier()
-server=ouverture_fichier()
-
-print(server)
-
-
-
 
 class User:
     def __init__(self,id:int, name:str):
@@ -42,34 +9,42 @@ class User:
     def to_dict(self):
         return{"id":self.id,"name":self.name}
 
+class Channel:
+    def __init__(self,id:int,member_ids:list,name:str):
+        self.id=id
+        self.name=name
+        self.member_ids=member_ids
+    def to_dict(self):
+        return {'id':self.id,'name':self.name,'member_ids':self.member_ids}
 
-
-L_users=[]
-for user in server['users']:
-    id=user['id']
-    name=user['name']
-    element=User(id,user)
-    L_users.append(element)
-
-
-    
-import json
+class Message:
+    def __init__(self, id: int, reception_date: str, sender_id: int, channel: int, content: str):
+        self.id=id
+        self.reception_date=reception_date
+        self.sender_id = sender_id
+        self.channel=channel
+        self.content=content
+    def __repr__(self):
+        return(f"Message(identifiant={self.id}), channel={self.channel},content={self.content} ")
+    def to_dict(self):
+        return {'id':self.id, 'reception_date':self.reception_date, 'sender_id': self.sender_id, 'channel':self.channel,'content':self.content}
 
 class Server:
-    def __init__(self,L_users,L_channels,L_messages):
+    def __init__(self, L_users: list[User], L_channels: list[Channel], L_messages: list[Message]):
         self.users=L_users
         self.channels=L_channels
         self.messages=L_messages
     def __repr__(self):
-        return(f"Server(user={self.user},channels={self.channels}, messages={self.messages}")
+        return(f"Server(users={self.users},channels={self.channels}, messages={self.messages}")
     def save(self):
+        # fonction qui passe d'une classe à un dictionnaire afin de faire le json.dump
         serveur={}
         #server.users contient une somme d'objets 
-        L_users=[user.to_dict() for user in server.users]
+        L_users=[user.to_dict() for user in self.users]
         serveur['users']=L_users
-        L_channels=[channel.to_dict() for channel in server.channels]
+        L_channels=[channel.to_dict() for channel in self.channels]
         serveur["channels"]=L_channels
-        L_messages=[message.to_dict() for message in server.messages]
+        L_messages=[message.to_dict() for message in self.messages]
         serveur["messages"]=L_messages
         with open('server.json', 'w') as f:
             json.dump(serveur, f,indent=10)
@@ -81,9 +56,10 @@ class Server:
             for message in server['messages']:
                 id=message['id']
                 reception_date=message['reception_date']
+                sender_id = message['sender_id']
                 channel=message['channel']
                 content=message['content']
-                element=Message(id,member_ids,name,content)
+                element = Message(id, reception_date, sender_id, channel, content)
                 L_messages.append(element)
             L_channels=[]
             for channel in server['channels']:
@@ -96,71 +72,11 @@ class Server:
         for user in server['users']:
             id=user['id']
             name=user['name']
-            element=User(id,user)
+            element = User(id, name)
             L_users.append(element)
         return cls(L_users,L_channels,L_messages)
 
-
-
-
-
-
-class Channel:
-    def __init__(self,id:int,member_ids:list,name:str):
-        self.id=id
-        self.name=name
-        self.member_ids=member_ids
-    def to_dict(self):
-        return {'id':self.id,'name':self.name,'member_ids':self.member_ids}
-
-
-
-L_channels=[]
-for channel in server['channels']:
-    id=channel['id']
-    name=channel['name']
-    member_ids=channel['member_ids']
-    element=Channel(id,member_ids,name)
-    L_channels.append(element)
-
-
-class Message:
-    def __init__(self,id:int,reception_date:str,channel:int,content):
-        self.id=id
-        self.reception_date=reception_date
-        self.channel=channel
-        self.content=content
-    def __repr__(self):
-        return(f"Message(identifiant={self.id}), channel={self.channel},content={self.content} ")
-    def to_dict(self):
-        return {'id':self.id, 'reception_date':self.reception_date,'channel':self.channel,'content':self.content}
-
-L_messages=[]
-for message in server['messages']:
-    id=message['id']
-    reception_date=message['reception_date']
-    channel=message['channel']
-    content=message['content']
-    element=Message(id,member_ids,name,content)
-    L_messages.append(element)
-
-
-
-class Server:
-    def __init__(self,L_users,L_channels,L_messages):
-        self.users=L_users
-        self.channels=L_channels
-        self.messages=L_messages
-
-server=Server(L_users,L_channels,L_messages)
-
-#il faudrait créer une méthode qui soit associée à cette fonction
-
-
-
-
-
-
+server = Server.load()
 
 def ecran_accueil():
     print('=== Messenger ===')
@@ -210,18 +126,18 @@ def fonction_groupe():
     membre=input('donner moi les gens membres du groupe')
     L=membre.split(',')
     L=[user.strip() for user in membre.split(',')]
-    dico={}
-    dico['id']=max([channel.id for channel in server.channels])+1
-    dico['name']=nom_groupe
+
+    new_group_id = max([channel.id for channel in server.channels])+1
+
     L_members=[]
     for members in L:
         i=0
-        while server['users'][i]['name']!=members:
+        while server.users[i].name != members:
             i=i+1
-        L_members.append(server['users'][i]['id'])
-    dico['members_ids']=L_members
-    server["channels"].append(dico)
-    modif()
+        L_members.append(server.users[i].id)
+    new_group = Channel(new_group_id, L_members, nom_groupe)
+    server.channels.append(new_group)
+    server.save()
 
 def ajout_membre_groupe():
     groupe=input('donner moi le nom du groupe')
@@ -235,8 +151,8 @@ def ajout_membre_groupe():
         j=j+1
     id=server['channels'][j]['id']
     server["channels"][j]['member_ids'].append(id)
-    modif()
     print(server)
+    server.save()
 
 choice = input('Select an option: ')
 while choice !='x':
@@ -264,10 +180,3 @@ while choice !='x':
     else:
         input("taper une commande répertoriée")
     choice = input('Select an option: ')
-
-
-
-
-#il faut écrire une fonction qui passe d'une classe à un dictionnaire afin de faire le json.dump
-
-
